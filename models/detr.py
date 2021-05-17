@@ -315,7 +315,7 @@ def build(args):
     #     # max_obj_id + 1, but the exact value doesn't really matter
     #     num_classes = 250
 
-    if args.dataset_file == "galaxy":
+    if args.dataset_file == "radiogalaxy":
         num_classes = 4 # 3 + 1
     device = torch.device(args.device)
 

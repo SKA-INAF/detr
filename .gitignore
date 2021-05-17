@@ -6,6 +6,7 @@
 .*.swp
 *.pth
 **/__pycache__/**
+__pycache__
 .ipynb_checkpoints/
 datasets/data/
 experiment-*
@@ -15,3 +16,5 @@ experiment-*
 .mypy_cache/*
 not_tracked_dir/
 .vscode
+data
+output

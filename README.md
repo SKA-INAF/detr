@@ -158,20 +158,9 @@ First, clone the repository locally:
 ```
 git clone https://github.com/facebookresearch/detr.git
 ```
-Then, install PyTorch 1.5+ and torchvision 0.6+:
+Then, create the environment from the YAML file
 ```
-conda install -c pytorch pytorch torchvision
-```
-Install pycocotools (for evaluation on COCO) and scipy (for training):
-```
-conda install cython scipy
-pip install -U 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI'
-```
-That's it, should be good to train and evaluate detection models.
-
-(optional) to work with panoptic install panopticapi:
-```
-pip install git+https://github.com/cocodataset/panopticapi.git
+conda env create -f environment.yml
 ```
 
 ## Data preparation
@@ -189,7 +178,7 @@ path/to/coco/
 ## Training
 To train baseline DETR on a single node with 8 gpus for 300 epochs run:
 ```
-python -m torch.distributed.launch --nproc_per_node=8 --use_env main.py --coco_path /path/to/coco 
+python --data_path /path/to/dataset --output path/to/output
 ```
 A single epoch takes 28 minutes, so 300 epoch training
 takes around 6 days on a single machine with 8 V100 cards.

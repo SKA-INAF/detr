@@ -19,7 +19,7 @@ def get_coco_api_from_dataset(dataset):
 def build_dataset(image_set, args):
     if args.dataset_file == 'coco':
         return build_coco(image_set, args)
-    if args.dataset_file == 'galaxy':
+    if args.dataset_file == 'radiogalaxy':
         return build_galaxy(image_set, args)
     if args.dataset_file == 'coco_panoptic':
         # to avoid making panopticapi required for coco
