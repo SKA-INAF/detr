@@ -140,8 +140,8 @@ def build(image_set, args):
     root = Path(args.data_path)
     assert root.exists(), f'provided data path {root} does not exist'
     PATHS = {
-        "train": (root / "train", root / 'train_annotations.json'),
-        "val": (root / "val", root / 'val_annotations.json'),
+        "train": (root / "train", root / 'annotations' / 'train.json'),
+        "val": (root / "val", root / 'annotations' / 'val.json'),
     }
 
     img_folder, ann_file = PATHS[image_set]
