@@ -81,13 +81,15 @@ def get_args_parser():
 
     # dataset parameters
     parser.add_argument('--dataset_file', default='radiogalaxy')
-    parser.add_argument('--data_path', type=str)
+    parser.add_argument('--data_path', default="radio-galaxy")
     # parser.add_argument('--coco_path', type=str)
     parser.add_argument('--coco_panoptic_path', type=str)
     parser.add_argument('--remove_difficult', action='store_true')
 
     parser.add_argument('--output_dir', default='output',
                         help='path where to save, empty for no saving')
+    parser.add_argument('--save_weights_every', default='1',
+                        help='Frequency to save weights')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=42, type=int)
@@ -208,7 +210,7 @@ def main(args):
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
             # extra checkpoint before LR drop and every 100 epochs
-            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 100 == 0:
+            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % args.save_weights_every == 0:
                 checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
