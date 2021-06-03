@@ -88,7 +88,7 @@ def get_args_parser():
 
     parser.add_argument('--output_dir', default='output',
                         help='path where to save, empty for no saving')
-    parser.add_argument('--save_weights_every', default='1',
+    parser.add_argument('--save_weights_every', default=3,
                         help='Frequency to save weights')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
