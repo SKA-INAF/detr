@@ -18,6 +18,7 @@ from engine import evaluate, train_one_epoch
 from models import build_model
 
 
+
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
     parser.add_argument('--lr', default=1e-4, type=float)
@@ -82,7 +83,7 @@ def get_args_parser():
 
     # dataset parameters
     parser.add_argument('--dataset_file', default='radiogalaxy')
-    parser.add_argument('--data_path', default="radio-galaxy")
+    parser.add_argument('--data_path', default="data/radio-galaxy")
     # parser.add_argument('--coco_path', type=str)
     parser.add_argument('--coco_panoptic_path', type=str)
     parser.add_argument('--remove_difficult', action='store_true')
@@ -234,6 +235,8 @@ def main(args):
                      **{f'test_{k}': v for k, v in test_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
+
+        wandb.log(log_stats)
 
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
