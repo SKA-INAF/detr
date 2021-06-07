@@ -4,6 +4,7 @@ import datetime
 import json
 import random
 import time
+import wandb
 from pathlib import Path
 
 import numpy as np
@@ -198,6 +199,10 @@ def main(args):
             utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
         return
 
+    wandb.login()
+    wandb.init()
+    
+    
     print("Start training")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
