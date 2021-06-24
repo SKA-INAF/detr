@@ -237,6 +237,8 @@ def main(args):
                      **{f'test_{k}': v for k, v in test_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
+        
+        wandb.log(log_stats)
 
         wandb.log(log_stats)
 
