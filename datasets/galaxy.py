@@ -1,9 +1,13 @@
 from pathlib import Path
+from PIL import Image
 import torch
 import torch.utils.data
 import torchvision
+import wandb
+from torchvision import datasets
+import os
 from pycocotools import mask as coco_mask
-
+import matplotlib.pyplot as plt
 import datasets.transforms as T
 
 class GalaxyDetection(torchvision.datasets.CocoDetection):
@@ -38,6 +42,94 @@ def convert_galaxy_poly_to_mask(segmentations, height, width):
         masks = torch.zeros((0, height, width), dtype=torch.uint8)
     return masks
 
+
+class Logger:
+
+    def __init__(self):
+        self.CLASSES = ['No-Object', 'Galaxy', 'Source', 'Sidelobe']
+        self.COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
+          [0.494, 0.184, 0.556]]
+        
+
+
+    def log_gt(self, orig_image, targets, out_dir='images', idx=0):
+        # no_pad = orig_image[idx] != 0
+        denorm_img, _ = inv_normalize()(orig_image[idx])
+        orig_image = torchvision.transforms.ToPILImage()(denorm_img)
+        target = targets[idx]
+
+        # convert boxes from [0; 1] to image scales
+        bboxes_scaled = self.rescale_bboxes(target['boxes'], target['size'])
+
+        # Save image to local file, then re-upload it and convert to PIL
+        # This is because plot_results works with plt 
+        os.makedirs(out_dir, exist_ok=True)
+        out_img_path = f'{out_dir}/out_gt.jpg'
+
+        confidence = [1.0] * target['boxes'].shape[0]
+        self.save_output(orig_image, target['labels'], bboxes_scaled, out_img_path, confidence)
+
+        with Image.open(out_img_path) as im:
+            wandb.log({f'GT': wandb.Image(im)})
+
+
+    def log_predictions(self, orig_image, output, out_dir='images', idx=0):
+        # Map the image back to a [0,1] range
+        # no_pad = orig_image != 0
+        denorm_img, _ = inv_normalize()(orig_image[idx])
+        orig_image = torchvision.transforms.ToPILImage()(denorm_img)
+        # Take the first image of the batch, discard last logit
+        probas = output['pred_logits'].softmax(-1)[idx, :, :-1]
+        # keep only predictions with 0.5+ confidence
+        keep = probas.max(-1).values > 0.5
+
+        # convert boxes from [0; 1] to image scales
+        # Takes the first prediction of the batch, where confidence is higher than 0.5
+        bboxes_scaled = self.rescale_bboxes(output['pred_boxes'][0, keep], orig_image.size)
+
+        # Save image to local file, then re-upload it and convert to PIL
+        # This is because plot_results works with plt 
+        os.makedirs(out_dir, exist_ok=True)
+        out_img_path = f'{out_dir}/out_pred.jpg'
+        # FIXME Implement handling of no prediction
+        if keep.any():
+            confidence, labels = probas[keep].max(-1)
+            self.save_output(orig_image, labels, bboxes_scaled, out_img_path, confidence.tolist())
+
+            with Image.open(out_img_path) as im:
+                wandb.log({f'Pred': wandb.Image(im)})
+
+
+
+
+    # for output bounding box post-processing
+    def box_cxcywh_to_xyxy(self, x):
+        x_c, y_c, w, h = x.unbind(1)
+        b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
+            (x_c + 0.5 * w), (y_c + 0.5 * h)]
+        return torch.stack(b, dim=1)
+
+    def rescale_bboxes(self, out_bbox, size):
+        img_w, img_h = size
+        b = self.box_cxcywh_to_xyxy(out_bbox)
+        b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32, device=out_bbox.device)
+        return b
+
+    def save_output(self, pil_img, labels, boxes, filename, confidence):
+        plt.figure(figsize=(16,10))
+        plt.imshow(pil_img)
+        ax = plt.gca()
+        colors = self.COLORS * 100
+        for cl, (xmin, ymin, xmax, ymax), cs, c in zip(labels.tolist(), boxes.tolist(), confidence, colors):
+            ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                                    fill=False, color=c, linewidth=3))
+            text = f'{self.CLASSES[cl]}: {cs:0.2f}'
+            
+            ax.text(xmin, ymin, text, fontsize=15,
+                    bbox=dict(facecolor='yellow', alpha=0.5))
+        plt.axis('off')
+        # plt.show()
+        plt.savefig(filename)
 
 class ConvertGalaxyPolysToMask(object):
     def __init__(self, return_masks=False):
@@ -103,6 +195,11 @@ class ConvertGalaxyPolysToMask(object):
 
         return image, target
 
+def inv_normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
+    return T.Normalize(
+        mean= [-m/s for m, s in zip(mean, std)],
+        std= [1/s for s in std]
+    )
 
 def make_galaxy_transforms(image_set):
 

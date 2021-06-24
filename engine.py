@@ -2,10 +2,13 @@
 """
 Train and eval functions used in main.py
 """
+from datasets.galaxy import Logger
 import math
 import os
+import wandb
 import sys
 from typing import Iterable
+
 
 import torch
 
@@ -19,6 +22,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     device: torch.device, epoch: int, max_norm: float = 0):
     model.train()
     criterion.train()
+    logger = Logger()
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('class_error', utils.SmoothedValue(window_size=1, fmt='{value:.2f}'))
@@ -29,7 +33,13 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
+        wandb.log({"Input Images": wandb.Image(samples.tensors, caption="Batch Input Images")})
+
         outputs = model(samples)
+
+        logger.log_predictions(samples.tensors, outputs)
+        logger.log_gt(samples.tensors, targets)
+
         loss_dict = criterion(outputs, targets)
         weight_dict = criterion.weight_dict
         losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)

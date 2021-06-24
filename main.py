@@ -201,7 +201,9 @@ def main(args):
         return
 
     wandb.login()
-    wandb.init()
+    wandb.init(
+        # mode="disabled"
+        )
     
     
     print("Start training")
