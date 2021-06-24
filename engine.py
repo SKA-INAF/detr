@@ -37,8 +37,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
         outputs = model(samples)
 
-        logger.log_predictions(samples.tensors, outputs)
-        logger.log_gt(samples.tensors, targets)
 
         loss_dict = criterion(outputs, targets)
         weight_dict = criterion.weight_dict
@@ -68,6 +66,10 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         metric_logger.update(loss=loss_value, **loss_dict_reduced_scaled, **loss_dict_reduced_unscaled)
         metric_logger.update(class_error=loss_dict_reduced['class_error'])
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+    
+    # Log output and GT
+    logger.log_gt(samples.tensors, targets)
+    logger.log_predictions(samples.tensors, outputs)
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
