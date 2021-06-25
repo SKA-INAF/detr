@@ -2,7 +2,7 @@
 """
 Train and eval functions used in main.py
 """
-from datasets.galaxy import Logger
+from util.logging import Logger
 import math
 import os
 import wandb
@@ -36,6 +36,9 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         wandb.log({"Input Images": wandb.Image(samples.tensors, caption="Batch Input Images")})
 
         outputs = model(samples)
+
+        logger.log_gt(samples.tensors, targets)
+        logger.log_predictions(samples.tensors, outputs)
 
 
         loss_dict = criterion(outputs, targets)
