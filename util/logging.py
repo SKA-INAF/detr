@@ -13,6 +13,7 @@ class Logger:
         self.CLASSES = ['No-Object', 'Galaxy', 'Source', 'Sidelobe']
         # self.COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
         #   [0.494, 0.184, 0.556]]
+        # self.COLORS = {'No-Object': (0, 114, 189), 'Galaxy': (217, 83, 25), 'Source': (237, 177, 32), 'Sidelobe': (126, 47, 142)}
         self.COLORS = [(0, 114, 189), (217, 83, 25), (237, 177, 32), (126, 47, 142)]
         
     def log_gt(self, orig_image, targets, idx=0):
@@ -62,29 +63,37 @@ class Logger:
             # self.drawBoundingBoxes(denorm_img.cpu().numpy(), labels, bboxes_scaled, confidence.tolist())
 
     # for output bounding box post-processing
-    def box_cxcywh_to_xyxy(self, x):
+    def box_xywh_to_xyxy(self, x):
+        '''
+        Converts bounding box coordinates 
+        from the form [x0, y0, w, h] to [x0, y0, x1, y1]
+        '''
+
         x_c, y_c, w, h = x.unbind(1)
         b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
             (x_c + 0.5 * w), (y_c + 0.5 * h)]
+
+        # x0, y0, w, h = x.unbind(1)
+        # b = [ x0, y0, x0 + w, y0 + h ]
         return torch.stack(b, dim=1)
 
     def rescale_bboxes(self, out_bbox, size):
-        img_w, img_h = size
-        b = self.box_cxcywh_to_xyxy(out_bbox)
+        # img_w, img_h = size
+        img_h, img_w = size
+        b = self.box_xywh_to_xyxy(out_bbox)
         b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32, device=out_bbox.device)
         return b
 
     def log_image(self, pil_img, labels, boxes, confidence, title):
         im = pil_img.copy()
         drw = ImageDraw.Draw(im)
-        colors = self.COLORS * 100
-        for cl, (xmin, ymin, xmax, ymax), cs, c in zip(labels.tolist(), boxes.tolist(), confidence, colors):
-            drw.rectangle([xmin, ymin, xmax, ymax], outline=c, width=3)
-            font = ImageFont.truetype('arial')
+        for cl, (xmin, ymin, xmax, ymax), cs, in zip(labels.tolist(), boxes.tolist(), confidence):
+            drw.rectangle([xmin, ymin, xmax, ymax], outline=self.COLORS[cl], width=3)
+            font = ImageFont.load_default()
             text = f'{self.CLASSES[cl]}: {cs:0.2f}'
             fw, fh = font.getsize(text)
-            drw.rectangle([xmin, ymin - fh, xmin + fw, ymin], fill=c)
-            drw.text((xmin, ymin - 12), text, fill=(55,55,55), font=font)
+            drw.rectangle([xmin, ymin - fh, xmin + fw, ymin], fill=self.COLORS[cl])
+            drw.text((xmin, ymin - 12), text, fill=(255,255,255), font=font)
         wandb.log({f'{title}': wandb.Image(im)})
 
     def drawBoundingBoxes(self, pil_img, labels, boxes, confidence):
