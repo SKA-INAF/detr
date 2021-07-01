@@ -15,6 +15,8 @@ class Logger:
         #   [0.494, 0.184, 0.556]]
         # self.COLORS = {'No-Object': (0, 114, 189), 'Galaxy': (217, 83, 25), 'Source': (237, 177, 32), 'Sidelobe': (126, 47, 142)}
         self.COLORS = [(0, 114, 189), (217, 83, 25), (237, 177, 32), (126, 47, 142)]
+        alpha = 128
+        self.COLORS_RGBA = [(0, 114, 189, alpha), (217, 83, 25, alpha), (237, 177, 32, alpha), (126, 47, 142, alpha)]
         
     def log_gt(self, orig_image, targets, idx=0):
         # no_pad = orig_image[idx] != 0
@@ -30,7 +32,7 @@ class Logger:
 
         confidence = [1.0] * target['boxes'].shape[0]
         # self.save_output(orig_image, target['labels'], bboxes_scaled, out_img_path, confidence)
-        self.log_image(orig_image, target['labels'], bboxes_scaled, confidence, 'Ground Truth')
+        self.log_image(orig_image, target['labels'], bboxes_scaled, target['masks'], confidence, 'Ground Truth')
         # self.drawBoundingBoxes(orig_image, target['labels'], bboxes_scaled, confidence)
 
 
@@ -39,9 +41,12 @@ class Logger:
         # no_pad = orig_image != 0
         denorm_img, _ = inv_normalize()(orig_image[idx])
         orig_image = torchvision.transforms.ToPILImage()(denorm_img)
+
         # Take the first image of the batch, discard last logit
         pred_logits = output['pred_logits'].softmax(-1)[idx, :, :-1]
         pred_boxes = pred_boxes=output['pred_boxes'][idx]
+        pred_masks = pred_masks=output['pred_masks'][idx]
+        
         class_probs = pred_logits.softmax(-1).max(-1)
         # keep only predictions with 0.5+ confidence
         keep = class_probs.values > 0.5
@@ -84,15 +89,24 @@ class Logger:
         b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32, device=out_bbox.device)
         return b
 
-    def log_image(self, pil_img, labels, boxes, confidence, title):
+    def log_image(self, pil_img, labels, boxes, masks, confidence, title):
         im = pil_img.copy()
-        drw = ImageDraw.Draw(im)
-        for cl, (xmin, ymin, xmax, ymax), cs, in zip(labels.tolist(), boxes.tolist(), confidence):
+        drw = ImageDraw.Draw(im, 'RGBA')
+        for cl, (xmin, ymin, xmax, ymax), m, cs, in zip(labels.tolist(), boxes.tolist(), masks, confidence):
             drw.rectangle([xmin, ymin, xmax, ymax], outline=self.COLORS[cl], width=3)
             font = ImageFont.load_default()
             text = f'{self.CLASSES[cl]}: {cs:0.2f}'
             fw, fh = font.getsize(text)
             drw.rectangle([xmin, ymin - fh, xmin + fw, ymin], fill=self.COLORS[cl])
+            
+            # Swap dimensions to take x points as firsts
+            # [H, W] => [W, H] 
+            m = m.t()
+            # Get mask coordinates
+            poly = (m == True).nonzero()
+            # Convert lists to tuples as ImageDraw accepts them this way
+            mask_points = list(map(lambda x: tuple(x), poly.tolist()))
+            drw.polygon(mask_points, fill=self.COLORS_RGBA[cl])
             drw.text((xmin, ymin - 12), text, fill=(255,255,255), font=font)
         wandb.log({f'{title}': wandb.Image(im)})
 

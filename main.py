@@ -55,7 +55,7 @@ def get_args_parser():
     parser.add_argument('--nheads', default=8, type=int,
                         help="Number of attention heads inside the transformer's attentions")
     # Number of queries should be strictly higher than the maximum number of objects in an image
-    parser.add_argument('--num_queries', default=30, type=int,
+    parser.add_argument('--num_queries', default=80, type=int,
                         help="Number of query slots")
     parser.add_argument('--pre_norm', action='store_true')
 
