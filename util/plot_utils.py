@@ -71,6 +71,7 @@ def plot_logs(logs, fields=('class_error', 'loss_bbox_unscaled', 'mAP'), ewm_col
     for ax, field in zip(axs, fields):
         ax.legend([Path(p).name for p in logs])
         ax.set_title(field)
+    wandb.log({', '.join(fields): wandb.Image(ax)})
 
 
 def plot_precision_recall(files, naming_scheme='iter'):
