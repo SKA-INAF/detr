@@ -16,6 +16,7 @@ import util.misc as utils
 from datasets import build_dataset, get_coco_api_from_dataset
 from engine import evaluate, train_one_epoch
 from models import build_model
+from util.plot_utils import plot_logs
 
 
 
@@ -111,6 +112,7 @@ def get_args_parser():
 def main(args):
     utils.init_distributed_mode(args)
     print("git:\n  {}\n".format(utils.get_sha()))
+    log_directory = [Path(args.output_dir)]
 
     if args.frozen_weights is not None:
         assert args.masks, "Frozen training is meant for segmentation only"
@@ -238,9 +240,10 @@ def main(args):
                      'epoch': epoch,
                      'n_parameters': n_parameters}
         
-        wandb.log(log_stats)
+        plot_logs([args.output_dir], ('loss', 'mAP'))
+        plot_logs([args.output_dir], ('loss_ce', 'loss_bbox', 'loss_giou'))
+        plot_logs([args.output_dir], ('class_error', 'cardinality_error_unscaled'))
 
-        wandb.log(log_stats)
 
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
