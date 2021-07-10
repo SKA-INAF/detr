@@ -3,6 +3,7 @@ import torch
 import torch.utils.data
 import numpy as np
 import torchvision
+import json
 from torchvision.transforms import ToPILImage
 from torchvision import datasets
 from pycocotools import mask as coco_mask
@@ -28,6 +29,13 @@ class GalaxyDetection(torchvision.datasets.CocoDetection):
 def convert_galaxy_poly_to_mask(segmentations, height, width):
     masks = []
     for polygons in segmentations:
+        # FIXME This is a hack to handle segmentation coordinates that have length 4
+        # and would be mistaken for bounding boxes
+        if len(polygons[0]) == 4:
+            polygons[0] = polygons[0] * 2
+        elif len(polygons[0]) < 4:
+            polygons[0] = polygons[0] * 4
+
         rles = coco_mask.frPyObjects(polygons, height, width)
         mask = coco_mask.decode(rles)
         if len(mask.shape) < 3:
@@ -41,7 +49,16 @@ def convert_galaxy_poly_to_mask(segmentations, height, width):
         masks = torch.zeros((0, height, width), dtype=torch.uint8)
     return masks
 
-
+def check_annotation_integrity(annotation_path):
+    '''
+    Check if segmentation coordinates have length 4
+    In this case, they will be treated as bounding boxes, which is wrong
+    '''
+    with open(annotation_path) as j:
+        annotations = json.load(j)['annotations']
+    for ann in annotations:
+        if len(ann['segmentation'][0]) == 4:
+            print(ann['segmentation'][0])
 
 class ConvertGalaxyPolysToMask(object):
     def __init__(self, return_masks=False):
@@ -69,6 +86,11 @@ class ConvertGalaxyPolysToMask(object):
 
         if self.return_masks:
             segmentations = [obj["segmentation"] for obj in anno]
+            # TODO REmove
+            for s in segmentations:
+                if len(s[0]) < 4:
+                    with open('wrong_masks.txt', 'a') as wm:
+                        wm.write(f'{image_id}\n')
             masks = convert_galaxy_poly_to_mask(segmentations, h, w)
 
         keypoints = None

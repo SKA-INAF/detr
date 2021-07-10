@@ -44,27 +44,35 @@ class Logger:
 
         # Take the first image of the batch, discard last logit
         pred_logits = output['pred_logits'].softmax(-1)[idx, :, :-1]
-        pred_boxes = pred_boxes=output['pred_boxes'][idx]
-        pred_masks = pred_masks=output['pred_masks'][idx]
+        pred_boxes = output['pred_boxes'][idx]
+        pred_masks = output['pred_masks'][idx]
         
         class_probs = pred_logits.softmax(-1).max(-1)
         # keep only predictions with 0.5+ confidence
-        keep = class_probs.values > 0.5
+        keep = class_probs.values > 0.3
 
         # Take the best k predictions
         # topk = class_probs.values.topk(15)
         # pred_logits = pred_logits[topk.indices]
         # pred_boxes = pred_boxes[topk.indices]
 
-        # convert boxes from [0; 1] to image scales
-        # Takes the first prediction of the batch, where confidence is higher than 0.5
-        bboxes_scaled = self.rescale_bboxes(pred_boxes, denorm_img.shape[1:])
-
         # Save image to local file, then re-upload it and convert to PIL
         # FIXME Implement handling of no prediction
         if keep.any():
-            confidence, labels = class_probs[keep].max(-1)
-            self.log_image(orig_image, labels, bboxes_scaled, confidence.tolist(), 'Prediction')
+            pred_logits = pred_logits[keep]
+            pred_boxes = pred_boxes[keep]
+            pred_masks = pred_masks[keep]
+
+            # convert boxes from [0; 1] to image scales
+            # Takes the first prediction of the batch, where confidence is higher than 0.5
+            bboxes_scaled = self.rescale_bboxes(pred_boxes, denorm_img.shape[1:])
+            # masks_scaled = self.rescale_masks(pred_masks, denorm_img.shape[1:])
+
+            confidence, labels = class_probs
+            confidence = confidence[keep]
+            labels = labels[keep]
+
+            self.log_image(orig_image, labels, bboxes_scaled, pred_masks, confidence.tolist(),  'Prediction')
             # self.drawBoundingBoxes(denorm_img.cpu().numpy(), labels, bboxes_scaled, confidence.tolist())
 
     # for output bounding box post-processing
@@ -89,6 +97,12 @@ class Logger:
         b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32, device=out_bbox.device)
         return b
 
+    def rescale_masks(self, out_mask, size):
+        # img_w, img_h = size
+        img_h, img_w = size
+        mask = out_mask * torch.tensor([img_w, img_h] * (len(out_mask) / 2), dtype=torch.float32, device=out_mask.device)
+        return mask
+
     def log_image(self, pil_img, labels, boxes, masks, confidence, title):
         im = pil_img.copy()
         drw = ImageDraw.Draw(im, 'RGBA')
@@ -106,8 +120,9 @@ class Logger:
             poly = (m == True).nonzero()
             # Convert lists to tuples as ImageDraw accepts them this way
             mask_points = list(map(lambda x: tuple(x), poly.tolist()))
-            drw.polygon(mask_points, fill=self.COLORS_RGBA[cl])
-            drw.text((xmin, ymin - 12), text, fill=(255,255,255), font=font)
+            if mask_points:
+                drw.polygon(mask_points, fill=self.COLORS_RGBA[cl])
+                drw.text((xmin, ymin - 12), text, fill=(255,255,255), font=font)
         wandb.log({f'{title}': wandb.Image(im)})
 
     def drawBoundingBoxes(self, pil_img, labels, boxes, confidence):

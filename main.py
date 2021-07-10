@@ -100,7 +100,7 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
-    parser.add_argument('--num_workers', default=2, type=int)
+    parser.add_argument('--num_workers', default=0, type=int)
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -209,6 +209,10 @@ def main(args):
     
     
     print("Start training")
+    # TODO Remove
+    # test_stats, coco_evaluator = evaluate(
+    #         model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
+    #     )
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:

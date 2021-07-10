@@ -68,6 +68,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     
     # Log output and GT
         logger.log_gt(samples.tensors, targets)
+        # TODO Uncomment
         logger.log_predictions(samples.tensors, outputs)
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
