@@ -33,8 +33,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
-        wandb.log({"Input Images": wandb.Image(samples.tensors, caption="Batch Input Images")})
-
         outputs = model(samples)
 
         loss_dict = criterion(outputs, targets)
