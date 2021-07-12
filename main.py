@@ -234,6 +234,11 @@ def main(args):
                     'epoch': epoch,
                     'args': args,
                 }, checkpoint_path)
+            plot_logs([output_dir], ('loss', 'mAP'))
+            plot_logs([output_dir], ('loss_ce', 'loss_bbox', 'loss_giou'))
+            plot_logs([output_dir], ('class_error', 'cardinality_error_unscaled'))
+
+            
 
         test_stats, coco_evaluator = evaluate(
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
@@ -244,9 +249,7 @@ def main(args):
                      'epoch': epoch,
                      'n_parameters': n_parameters}
         
-        plot_logs([args.output_dir], ('loss', 'mAP'))
-        plot_logs([args.output_dir], ('loss_ce', 'loss_bbox', 'loss_giou'))
-        plot_logs([args.output_dir], ('class_error', 'cardinality_error_unscaled'))
+        
 
 
         if args.output_dir and utils.is_main_process():
