@@ -209,10 +209,6 @@ def main(args):
     
     
     print("Start training")
-    # TODO Remove
-    # test_stats, coco_evaluator = evaluate(
-    #         model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir
-    #     )
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
