@@ -29,12 +29,8 @@ class GalaxyDetection(torchvision.datasets.CocoDetection):
 def convert_galaxy_poly_to_mask(segmentations, height, width):
     masks = []
     for polygons in segmentations:
-        # FIXME This is a hack to handle segmentation coordinates that have length 4
-        # and would be mistaken for bounding boxes
-        if len(polygons[0]) == 4:
-            polygons[0] = polygons[0] * 2
-        elif len(polygons[0]) < 4:
-            polygons[0] = polygons[0] * 4
+        if len(polygons[0]) <= 4:
+            raise Exception("Wrong number of points in polygon")
 
         rles = coco_mask.frPyObjects(polygons, height, width)
         mask = coco_mask.decode(rles)
