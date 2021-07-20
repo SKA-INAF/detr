@@ -43,7 +43,7 @@ class Logger:
         
         class_probs = pred_logits.softmax(-1).max(-1)
         # keep only predictions with 0.5+ confidence
-        keep = class_probs.values > 0.3
+        keep = class_probs.values > 0.7
 
         # Save image to local file, then re-upload it and convert to PIL
         # FIXME Implement handling of no prediction

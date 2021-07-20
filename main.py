@@ -220,8 +220,8 @@ def main(args):
         if args.output_dir:
             checkpoint_paths = [output_dir / 'checkpoint.pth']
             # extra checkpoint before LR drop and every 100 epochs
-            if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % args.save_weights_every == 0:
-                checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
+        if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % args.save_weights_every == 0:
+            checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),
@@ -230,9 +230,9 @@ def main(args):
                     'epoch': epoch,
                     'args': args,
                 }, checkpoint_path)
-            plot_logs([output_dir], ('loss', 'mAP'))
-            plot_logs([output_dir], ('loss_ce', 'loss_bbox', 'loss_giou'))
-            plot_logs([output_dir], ('class_error', 'cardinality_error_unscaled'))
+        plot_logs([output_dir], ('loss', 'mAP'))
+        plot_logs([output_dir], ('loss_ce', 'loss_bbox', 'loss_giou'))
+        plot_logs([output_dir], ('class_error', 'cardinality_error_unscaled'))
 
             
 
