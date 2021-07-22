@@ -29,7 +29,11 @@ class Logger:
         bboxes_scaled = self.rescale_bboxes(target['boxes'], target['size'])
 
         confidence = [1.0] * target['boxes'].shape[0]
-        self.log_image(orig_image, target['labels'], bboxes_scaled, target['masks'], confidence, 'Ground Truth')
+        if 'masks' in target.keys():
+            self.log_image_w_mask(orig_image, target['labels'], bboxes_scaled, target['masks'], confidence, 'Ground Truth')
+        else:
+            self.log_image(orig_image, target['labels'], bboxes_scaled, confidence, 'Ground Truth')
+
 
 
     def log_predictions(self, orig_image, output, idx=0):
@@ -39,7 +43,8 @@ class Logger:
         # Take the first image of the batch, discard last logit
         pred_logits = output['pred_logits'].softmax(-1)[idx, :, :-1]
         pred_boxes = output['pred_boxes'][idx]
-        pred_masks = output['pred_masks'][idx]
+        if 'pred_masks' in output.keys():
+            pred_masks = output['pred_masks'][idx]
         
         class_probs = pred_logits.softmax(-1).max(-1)
         # keep only predictions with 0.5+ confidence
@@ -50,7 +55,6 @@ class Logger:
         if keep.any():
             pred_logits = pred_logits[keep]
             pred_boxes = pred_boxes[keep]
-            pred_masks = pred_masks[keep]
 
             # convert boxes from [0; 1] to image scales
             # Takes the first prediction of the batch, where confidence is higher than 0.5
@@ -60,7 +64,13 @@ class Logger:
             confidence = confidence[keep]
             labels = labels[keep]
 
-            self.log_image(orig_image, labels, bboxes_scaled, pred_masks, confidence.tolist(), 'Prediction')
+            if pred_masks:
+                pred_masks = pred_masks[keep]
+                self.log_image_w_masks(orig_image, labels, bboxes_scaled, pred_masks, confidence.tolist(), 'Prediction')
+
+            else:
+                self.log_image(orig_image, labels, bboxes_scaled, confidence.tolist(), 'Prediction')
+            
 
     # for output bounding box post-processing
     def box_xywh_to_xyxy(self, x):
@@ -81,7 +91,20 @@ class Logger:
         b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32, device=out_bbox.device)
         return b
 
-    def log_image(self, pil_img, labels, boxes, masks, confidence, title):
+    def log_image(self, pil_img, labels, boxes, confidence, title):
+        plt.figure(figsize=(16,10))
+        plt.imshow(pil_img)
+        ax = plt.gca()
+        for cl, (xmin, ymin, xmax, ymax), cs, in zip(labels.tolist(), boxes.tolist(), confidence):
+            ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                                    fill=False, color=self.COLORS[cl], linewidth=3))
+            text = f'{self.CLASSES[cl]}: {cs:0.2f}'
+            ax.text(xmin, ymin, text, fontsize=15,
+                    bbox=dict(facecolor='yellow', alpha=0.5))
+
+        wandb.log({f'{title}': wandb.Image(ax)})
+
+    def log_image_w_mask(self, pil_img, labels, boxes, masks, confidence, title):
         plt.figure(figsize=(16,10))
         plt.imshow(pil_img)
         ax = plt.gca()
