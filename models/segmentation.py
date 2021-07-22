@@ -32,7 +32,12 @@ class DETRsegm(nn.Module):
 
         hidden_dim, nheads = detr.transformer.d_model, detr.transformer.nhead
         self.bbox_attention = MHAttentionMap(hidden_dim, hidden_dim, nheads, dropout=0.0)
-        self.mask_head = MaskHeadSmallConv(hidden_dim + nheads, [1024, 512, 256], hidden_dim)
+        # TODO Parametrize to use with different backbones
+        # ResNet50 and 101
+        # self.mask_head = MaskHeadSmallConv(hidden_dim + nheads, [1024, 512, 256], hidden_dim) 
+
+        # ResNet18
+        self.mask_head = MaskHeadSmallConv(hidden_dim + nheads, [256, 128, 64], hidden_dim) 
 
     def forward(self, samples: NestedTensor):
         if isinstance(samples, (list, torch.Tensor)):
