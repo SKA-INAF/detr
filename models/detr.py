@@ -104,6 +104,18 @@ class SetCriterion(nn.Module):
         empty_weight[-1] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
 
+        class_weight = [0.25, 2.85, 0.30, 1.50]
+        class_weight.append(self.eos_coef)
+        class_weight = torch.tensor(class_weight)
+        self.register_buffer('class_weights', class_weight)
+
+    def focal_loss(self, outputs, targets, gamma: float = 2):
+        src_logits = outputs['pred_logits']
+        ce_loss = F.cross_entropy(src_logits.transpose(1, 2), targets, weight=self.class_weights, reduction = 'none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = ((1 - pt) ** gamma * ce_loss).mean()
+        return focal_loss
+
     def loss_labels(self, outputs, targets, indices, num_boxes, log=True):
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
@@ -117,8 +129,9 @@ class SetCriterion(nn.Module):
                                     dtype=torch.int64, device=src_logits.device)
         target_classes[idx] = target_classes_o
 
-        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
-        losses = {'loss_ce': loss_ce}
+        # loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
+        loss_focal = self.focal_loss(outputs, target_classes)
+        losses = {'loss_ce': loss_focal}
 
         if log:
             # TODO this should probably be a separate loss, not hacked in this one here
