@@ -129,9 +129,9 @@ class SetCriterion(nn.Module):
                                     dtype=torch.int64, device=src_logits.device)
         target_classes[idx] = target_classes_o
 
-        # loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
-        loss_focal = self.focal_loss(outputs, target_classes)
-        losses = {'loss_ce': loss_focal}
+        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
+        # loss_focal = self.focal_loss(outputs, target_classes)
+        losses = {'loss_ce': loss_ce}
 
         if log:
             # TODO this should probably be a separate loss, not hacked in this one here
@@ -330,6 +330,10 @@ def build(args):
 
     if args.dataset_file == "radiogalaxy":
         num_classes = 4 # 3 + 1
+    device = torch.device(args.device)
+
+    if args.dataset_file == "fmri":
+        num_classes = 2 # 3 + 1
     device = torch.device(args.device)
 
     backbone = build_backbone(args)

@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import cv2
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
+import json
 import wandb
 import os
 import torchvision
@@ -43,10 +44,12 @@ class Logger:
         # Take the first image of the batch, discard last logit
         pred_logits = output['pred_logits'].softmax(-1)[idx, :, :-1]
         pred_boxes = output['pred_boxes'][idx]
+        
+        pred_masks = None
         if 'pred_masks' in output.keys():
             pred_masks = output['pred_masks'][idx]
         
-        class_probs = pred_logits.softmax(-1).max(-1)
+        class_probs = pred_logits.max(-1)
         # keep only predictions with 0.5+ confidence
         keep = class_probs.values > 0.7
 
@@ -70,6 +73,21 @@ class Logger:
 
             else:
                 self.log_image(orig_image, labels, bboxes_scaled, confidence.tolist(), 'Prediction')
+    
+    def save_bboxes(self, targets, output, out_file, idx=0):
+        pred_logits = output['pred_logits'].softmax(-1)[idx, :, :-1]
+        pred_boxes = output['pred_boxes'][idx]
+        img_id = targets[idx]['image_id']
+        
+        class_probs = pred_logits.max(-1)
+        keep = class_probs.values > 0.5
+        
+        if keep.any():
+            # TODO Check if enters condition 
+            pred_boxes = pred_boxes[keep]
+
+        img_to_boxes = {img_id.item(): pred_boxes.tolist()}
+        json.dump(img_to_boxes, out_file)
             
 
     # for output bounding box post-processing
@@ -145,3 +163,10 @@ class Logger:
                 drw.polygon(mask_points, fill=self.COLORS_RGBA[cl])
                 drw.text((xmin, ymin - 12), text, fill=(255,255,255), font=font)
         wandb.log({f'{title}': wandb.Image(im)})
+
+
+class FFRLogger(Logger):
+    def __init__(self):
+        super(FFRLogger, self).__init__()
+        self.CLASSES = ['No-Object', 'Stenosis']
+        self.COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098]]

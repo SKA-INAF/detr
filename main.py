@@ -2,12 +2,14 @@
 import argparse
 import datetime
 import json
+from os import sysconf
 import random
 import time
-from util.logging import Logger
+from util.logging import FFRLogger, Logger
 import wandb
 from pathlib import Path
 
+import sys
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, DistributedSampler
@@ -98,6 +100,7 @@ def get_args_parser():
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--resume', default='', help='resume from checkpoint')
+    parser.add_argument('--best_checkpoint', default='', help='Path to best weights')
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
@@ -185,6 +188,7 @@ def main(args):
         else:
             checkpoint = torch.load(args.resume, map_location='cpu')
 
+
         del checkpoint["model"]["class_embed.weight"]
         del checkpoint["model"]["class_embed.bias"]
         del checkpoint["model"]["query_embed.weight"]
@@ -211,6 +215,7 @@ def main(args):
     
     print("Start training")
     start_time = time.time()
+    # logger = FFRLogger()
     logger = Logger()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -236,11 +241,38 @@ def main(args):
         plot_logs([output_dir], ('loss_ce', 'loss_bbox', 'loss_giou'))
         plot_logs([output_dir], ('class_error', 'cardinality_error_unscaled'))
 
-            
 
         test_stats, coco_evaluator = evaluate(
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir, logger
         )
+
+        if args.best_checkpoint:
+            best_ckpt = torch.load(args.best_checkpoint)
+        else:
+            best_ckpt = {
+                'loss': sys.float_info.max,
+                'optimizer': None,
+                'lr_scheduler': None,
+                'epoch': -1,
+                'acc': 0,
+                'model': None,
+                'args': None,
+            }
+
+        if args.output_dir:
+            checkpoint_paths = [output_dir / 'best.pth']
+            # extra checkpoint before LR drop and every 100 epochs
+        if test_stats['loss'] < best_ckpt['loss']:
+            checkpoint_paths.append(output_dir / f'best.pth')
+            for checkpoint_path in checkpoint_paths:
+                utils.save_on_master({
+                    'model': model_without_ddp.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'lr_scheduler': lr_scheduler.state_dict(),
+                    'epoch': epoch,
+                    'args': args,
+                    'loss': test_stats['loss']
+                }, checkpoint_path)
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      **{f'test_{k}': v for k, v in test_stats.items()},
