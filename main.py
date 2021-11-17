@@ -100,7 +100,6 @@ def get_args_parser():
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--resume', default='', help='resume from checkpoint')
-    parser.add_argument('--best_checkpoint', default='', help='Path to best weights')
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
@@ -207,15 +206,20 @@ def main(args):
             utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
         return
 
-    wandb.login()
-    wandb.init(
-        # mode="disabled"
-        )
+    if utils.is_main_process():
+        wandb.login()
+        wandb.init()# mode="disabled")
     
     
     print("Start training")
     start_time = time.time()
     logger = Logger()
+
+    if 'loss' not in checkpoint:
+        best_loss = sys.float_info.max
+    else:
+        best_loss = checkpoint['loss']
+
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             sampler_train.set_epoch(epoch)
@@ -245,24 +249,12 @@ def main(args):
             model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir, logger
         )
 
-        if args.best_checkpoint:
-            best_ckpt = torch.load(args.best_checkpoint)
-        else:
-            best_ckpt = {
-                'loss': sys.float_info.max,
-                'optimizer': None,
-                'lr_scheduler': None,
-                'epoch': -1,
-                'acc': 0,
-                'model': None,
-                'args': None,
-            }
 
         if args.output_dir:
             checkpoint_paths = [output_dir / 'best.pth']
-            # extra checkpoint before LR drop and every 100 epochs
-        if test_stats['loss'] < best_ckpt['loss']:
-            checkpoint_paths.append(output_dir / f'best.pth')
+
+        if test_stats['loss'] < best_loss:
+            best_loss = test_stats['loss']
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),

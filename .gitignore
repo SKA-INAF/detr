@@ -1,5 +1,4 @@
 .nfs*
-*.ipynb
 *.pyc
 .dumbo.json
 .DS_Store
@@ -21,3 +20,5 @@ output
 wandb
 images
 predictions
+*.json
+*.txt

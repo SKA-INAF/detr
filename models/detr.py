@@ -332,7 +332,7 @@ def build(args):
         num_classes = 4 # 3 + 1
     device = torch.device(args.device)
 
-    if args.dataset_file == "fmri":
+    if args.dataset_file == "ffr":
         num_classes = 2 # 3 + 1
     device = torch.device(args.device)
 

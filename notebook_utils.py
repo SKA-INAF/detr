@@ -99,7 +99,7 @@ def inv_normalize(x, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
 
 def log_gt(orig_image, targets, idx=0):
     denorm_img = inv_normalize()(orig_image[idx])
-    orig_image = T.ToPILImage()(denorm_img)
+    orig_image = TF.to_pil_image(denorm_img)
     target = targets[idx]
 
     # convert boxes from [0; 1] to image scales
@@ -114,18 +114,15 @@ def format_output(output, confidence_threshold=0.7, batch_idx=0):
     img_shape: (w, h)
     '''
     # denorm_img = inv_normalize()(orig_image[idx])
-    # orig_image = torchvision.transforms.ToPILImage()(denorm_img)
+    # orig_image = TF.to_pil_image(denorm_img)
 
     # Take the first image of the batch, discard last logit
     pred_logits = output['pred_logits'].softmax(-1)[batch_idx, :, :-1]
     pred_boxes = output['pred_boxes'][batch_idx]
 
     class_probs = pred_logits.max(-1)
-    # keep only predictions with 0.5+ confidence
     keep = class_probs.values > confidence_threshold
 
-    # Save image to local file, then re-upload it and convert to PIL
-    # FIXME Implement handling of no prediction
     if keep.any():
         pred_logits = pred_logits[keep]
         pred_boxes = pred_boxes[keep]
@@ -143,22 +140,23 @@ def format_output(output, confidence_threshold=0.7, batch_idx=0):
     return labels, pred_boxes, confidence
 
 
-def log_image(pil_img, labels, boxes, confidence, title):
+def log_image(pil_img, labels, boxes, confidence, title, CLASSES, COLORS):
     '''
     labels, boxes and confidence are lists
     '''
     fig = plt.figure(figsize=(16,10))
     plt.imshow(pil_img)
     ax = plt.gca()
-    for cl, (xmin, ymin, xmax, ymax), cs, in zip(labels, boxes, confidence):
-        ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
-                                fill=False, color=COLORS[cl], linewidth=3))
-        text = f'{CLASSES[cl]}: {cs:0.2f}'
-        ax.text(xmin, ymin, text, fontsize=15,
-                bbox=dict(facecolor='yellow', alpha=0.5))
-
-    plt.axis('off')
-    return fig
+    try:
+        for cl, (xmin, ymin, xmax, ymax), cs, in zip(labels, boxes, confidence):
+            ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                                    fill=False, color=COLORS[cl], linewidth=3))
+            text = f'{CLASSES[cl]}: {cs:0.2f}'
+            ax.text(xmin, ymin, text, fontsize=15,
+                    bbox=dict(facecolor='yellow', alpha=0.5))
+    finally:
+        plt.axis('off')
+        return fig
 
 def apply_transforms(img):
 
