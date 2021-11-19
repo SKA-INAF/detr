@@ -2,6 +2,8 @@
 """
 Train and eval functions used in main.py
 """
+from pathlib import Path
+from notebook_utils import plot_logs
 from util.logging import Logger
 import math
 import os
@@ -112,6 +114,9 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
                              **loss_dict_reduced_unscaled)
         metric_logger.update(class_error=loss_dict_reduced['class_error'])
 
+        out = [Path('pretrained/radiogalaxy/2021-11-15_r50_150ep')]
+        plot_logs(out, ['loss', 'mAP'])
+
         orig_target_sizes = torch.stack([t["orig_size"] for t in targets], dim=0)
         results = postprocessors['bbox'](outputs, orig_target_sizes)
         if 'segm' in postprocessors.keys():
@@ -134,6 +139,8 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
     # gather the stats from all processes
     logger.log_gt(samples.tensors, targets)
     logger.log_predictions(samples.tensors, outputs)
+
+
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
     if coco_evaluator is not None:

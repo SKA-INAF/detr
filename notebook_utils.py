@@ -108,6 +108,7 @@ def log_gt(orig_image, targets, idx=0):
     confidence = [1.0] * target['boxes'].shape[0]
     log_image(orig_image, target['labels'], bboxes_scaled, confidence, 'Ground Truth')
 
+
 def format_output(output, confidence_threshold=0.7, batch_idx=0):
     '''
     output = output of the model forward step
@@ -141,12 +142,43 @@ def format_output(output, confidence_threshold=0.7, batch_idx=0):
 
 
 def log_image(pil_img, labels, boxes, confidence, title, CLASSES, COLORS):
-    '''
-    labels, boxes and confidence are lists
-    '''
+
     fig = plt.figure(figsize=(16,10))
     plt.imshow(pil_img)
     ax = plt.gca()
+
+    if isinstance(labels, torch.Tensor):
+        labels = labels.tolist()
+    if isinstance(boxes, torch.Tensor):
+        boxes = boxes.tolist()
+    if isinstance(confidence, torch.Tensor):
+        confidence = confidence.tolist()
+
+    try:
+        x = 2
+        for cl, (xmin, ymin, xmax, ymax), cs, in zip(labels, boxes, confidence):
+            ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                                    fill=False, color=COLORS[cl], linewidth=3))
+            text = f'{CLASSES[cl]}: {cs:0.2f}'
+            ax.text(xmin, ymin, text, fontsize=15,
+                    bbox=dict(facecolor='yellow', alpha=0.5))
+    finally:
+        plt.axis('off')
+        return fig
+        
+def log_image_rev(pil_img, labels, boxes, confidence, title, CLASSES, COLORS):
+
+    fig = plt.figure(figsize=(16,10))
+    plt.imshow(pil_img)
+    ax = plt.gca()
+
+    if isinstance(labels, torch.Tensor):
+        labels = labels.tolist()
+    if isinstance(boxes, torch.Tensor):
+        boxes = boxes.tolist()
+    if isinstance(confidence, torch.Tensor):
+        confidence = confidence.tolist()
+
     try:
         for cl, (xmin, ymin, xmax, ymax), cs, in zip(labels, boxes, confidence):
             ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
@@ -159,12 +191,5 @@ def log_image(pil_img, labels, boxes, confidence, title, CLASSES, COLORS):
         return fig
 
 def apply_transforms(img):
-
-    totensor = T.ToTensor()
-    normalize = T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-
-    im_tensor = totensor(img)
-    if im_tensor.shape[0] != 3:
-        return None
-
-    return normalize(im_tensor)
+    im_tensor = TF.to_tensor(img)
+    return TF.normalize(im_tensor, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])

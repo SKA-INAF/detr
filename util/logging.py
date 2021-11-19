@@ -5,6 +5,7 @@ from matplotlib.patches import Polygon
 import json
 import wandb
 import os
+import util.misc as utils
 import torchvision
 import numpy as np
 import torch
@@ -120,7 +121,8 @@ class Logger:
             ax.text(xmin, ymin, text, fontsize=15,
                     bbox=dict(facecolor='yellow', alpha=0.5))
 
-        wandb.log({f'{title}': wandb.Image(ax)})
+        if utils.is_main_process():
+            wandb.log({f'{title}': wandb.Image(ax)})
 
     def log_image_w_mask(self, pil_img, labels, boxes, masks, confidence, title):
         plt.figure(figsize=(16,10))
@@ -140,7 +142,8 @@ class Logger:
             poly = (m == True).nonzero()
             if len(poly):
                 ax.add_patch(Polygon(poly.cpu(), color=self.COLORS[cl], alpha=0.7))
-        wandb.log({f'{title}': wandb.Image(ax)})
+        if utils.is_main_process():
+            wandb.log({f'{title}': wandb.Image(ax)})
 
     def log_PIL_image(self, pil_img, labels, boxes, masks, confidence, title):
         im = pil_img.copy()
@@ -162,7 +165,8 @@ class Logger:
             if mask_points:
                 drw.polygon(mask_points, fill=self.COLORS_RGBA[cl])
                 drw.text((xmin, ymin - 12), text, fill=(255,255,255), font=font)
-        wandb.log({f'{title}': wandb.Image(im)})
+        if utils.is_main_process():
+            wandb.log({f'{title}': wandb.Image(im)})
 
 
 class FFRLogger(Logger):
