@@ -4,7 +4,7 @@ import torchvision.transforms.functional as TF
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import torchvision.transforms as T 
+import datasets.transforms as T
 
 from pathlib import Path, PurePath
 
@@ -181,7 +181,7 @@ def log_image_rev(pil_img, labels, boxes, confidence, title, CLASSES, COLORS):
 
     try:
         for cl, (xmin, ymin, xmax, ymax), cs, in zip(labels, boxes, confidence):
-            ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+            ax.add_patch(plt.Rectangle((xmin, ymax), xmax - xmin, ymax - ymin,
                                     fill=False, color=COLORS[cl], linewidth=3))
             text = f'{CLASSES[cl]}: {cs:0.2f}'
             ax.text(xmin, ymin, text, fontsize=15,
@@ -193,3 +193,14 @@ def log_image_rev(pil_img, labels, boxes, confidence, title, CLASSES, COLORS):
 def apply_transforms(img):
     im_tensor = TF.to_tensor(img)
     return TF.normalize(im_tensor, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+
+
+def make_coco_transforms():
+    normalize = T.Compose([
+        T.ToTensor(),
+        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+    return T.Compose([
+            T.RandomResize([800], max_size=1333),
+            normalize,
+        ])

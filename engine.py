@@ -134,8 +134,8 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
             panoptic_evaluator.update(res_pano)
 
     # gather the stats from all processes
-    logger.log_gt(samples.tensors, targets)
-    logger.log_predictions(samples.tensors, outputs)
+    # logger.log_gt(samples.tensors, targets)
+    # logger.log_predictions(samples.tensors, outputs)
 
 
     metric_logger.synchronize_between_processes()
