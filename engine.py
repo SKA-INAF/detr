@@ -18,6 +18,13 @@ import util.misc as utils
 from datasets.coco_eval import CocoEvaluator
 from datasets.panoptic_eval import PanopticEvaluator
 
+import torchvision.transforms.functional as TF
+def inv_normalize(x, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
+    return TF.normalize(
+        x,
+        mean= [-m/s for m, s in zip(mean, std)],
+        std= [1/s for s in std]
+    )
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,

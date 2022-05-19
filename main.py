@@ -204,6 +204,16 @@ def main(args):
                                               data_loader_val, base_ds, device, args.output_dir)
         if args.output_dir:
             utils.save_on_master(coco_evaluator.coco_eval["bbox"].eval, output_dir / "eval.pth")
+        plot_logs([output_dir], ('loss', 'mAP'))
+
+        log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},
+                'epoch': 0,
+                'n_parameters': n_parameters}
+        
+        if args.output_dir and utils.is_main_process():
+            with (output_dir / "eval_log.txt").open("a") as f:
+                f.write(json.dumps(log_stats) + "\n")
+
         return
 
     if utils.is_main_process():
